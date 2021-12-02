@@ -9,4 +9,4 @@ To create a new instance of this deployment, follow these instructions:
 2. Add the contents of this repository to the yolov5 folder, replacing the detect.py file with our version
 
 Notes:
-The runs folder is basically just for storing previous run results, and isn't technically necessary for deployment outside of just needing to exist. It currently has some results from our V1 model, but those could be skipped if storage space is a concern. The existence of the run directory is the only important thing for the deployment.
+The runs folder is basically just for storing previous run results, and isn't technically necessary for deployment outside of just needing to exist. The existence of the run directory is the only important thing for the deployment.
