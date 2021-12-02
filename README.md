@@ -1,6 +1,6 @@
 # Autonomous Pedestrian Detection (APD) Deployment
 
-Developed by Ryan Guidice and Andrew Helmreich
+Developed by [Ryan Guidice](https://github.com/rguidice "Ryan Guidice") and [Andrew Helmreich](https://github.com/achelm15 "Andrew Helmreich")
 
 On the Raspberry Pi 4B, this deployment is currently located in ~/projects/apd_deployment
 
