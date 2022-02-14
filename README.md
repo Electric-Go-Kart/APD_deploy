@@ -4,8 +4,10 @@ Developed by [Ryan Guidice](https://github.com/rguidice "Ryan Guidice") and [And
 
 On the Raspberry Pi 4B, this deployment is currently located in ~/projects/apd_deployment
 
+Please check the setup guide on the Google Drive for full install details.
+
 To create a new instance of this deployment, follow these instructions:
-1. Clone the [yolov5 repo](https://github.com/ultralytics/yolov5 "yolov5 repo"), specifically [this commit](https://github.com/ultralytics/yolov5/commit/79bca2bf64da04e7e1e74a132eb54171f41638cc "this commit")
+1. Clone the [yolov5 repo](https://github.com/ultralytics/yolov5 "yolov5 repo") and checkout [this commit](https://github.com/ultralytics/yolov5/commit/79bca2bf64da04e7e1e74a132eb54171f41638cc "this commit")
 2. Add the contents of this repository to the yolov5 folder, replacing the detect.py file with our version
 
 Notes:
