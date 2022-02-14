@@ -2,13 +2,6 @@
 
 Developed by [Ryan Guidice](https://github.com/rguidice "Ryan Guidice") and [Andrew Helmreich](https://github.com/achelm15 "Andrew Helmreich")
 
-On the Raspberry Pi 4B, this deployment is currently located in ~/projects/apd_deployment
+To create a new instance of this deployment, simply run APD_deploy_setup.sh, or follow the setup guide in the Google Drive. The setup guide will have more details and explanation.
 
-Please check the setup guide on the Google Drive for full install details.
-
-To create a new instance of this deployment, follow these instructions:
-1. Clone the [yolov5 repo](https://github.com/ultralytics/yolov5 "yolov5 repo") and checkout [this commit](https://github.com/ultralytics/yolov5/commit/79bca2bf64da04e7e1e74a132eb54171f41638cc "this commit")
-2. Add the contents of this repository to the yolov5 folder, replacing the detect.py file with our version
-
-Notes:
-The runs folder is basically just for storing previous run results, and isn't technically necessary for deployment outside of just needing to exist. The existence of the run directory is the only important thing for the deployment.
+On the Raspberry Pi 4B, this deployment is currently located in ~/projects/APD_deploy
