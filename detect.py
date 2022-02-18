@@ -47,6 +47,9 @@ from utils.general import (LOGGER, apply_classifier, check_file, check_img_size,
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import load_classifier, select_device, time_sync
 
+from multiprocessing.shared_memory import SharedMemory
+import time
+
 
 @torch.no_grad()
 def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
@@ -162,6 +165,23 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
 
+
+    # Setup Shared Memory
+    frame_ndim = 3
+    frame_nbytes = 480 * 640 * 3
+    frame_shape_tup = (480, 640, 3)
+    frame_dtype = np.dtype(np.uint8)
+
+    #create a shared memory for sending the frame shape
+    frame_shape_shm = SharedMemory(name="frame_shape", create=True, size=frame_ndim*4) #4 bytes per dim as long as int32 is big enough
+    frame_shape = np.ndarray(3, buffer=frame_shape_shm.buf, dtype='i4')  #4 bytes per dim as long as int32 is big enough
+    frame_shape[:] = frame_shape_tup
+
+    #create the shared memory for the frame buffer
+    frame_buffer_shm = SharedMemory(name="frame_buffer", create=True, size=frame_nbytes)
+    frame_buffer = np.ndarray(frame_shape, buffer=frame_buffer_shm.buf, dtype=frame_dtype)
+    
+
     # Run inference
     if pt and device.type != 'cpu':
         model(torch.zeros(1, 3, *imgsz).to(device).type_as(next(model.parameters())))  # run once
@@ -267,8 +287,13 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             # Stream results
             im0 = annotator.result()
             if view_img:
-                cv2.imshow(str(p), im0)
-                cv2.waitKey(1)  # 1 millisecond
+                # Original code to display in cv2 window
+                # cv2.imshow(str(p), im0)
+                # cv2.waitKey(1)  # 1 millisecond
+                
+                # New code to write into shared memory for EKartUI to pull
+                frame_buffer[:] = im0[:]
+                
 
             # Save results (image with detections)
             if save_img:
