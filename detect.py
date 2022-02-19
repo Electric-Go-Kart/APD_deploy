@@ -5,6 +5,8 @@
 # yolov5 repo: https://github.com/ultralytics/yolov5
 # Specific commit we started off from: https://github.com/ultralytics/yolov5/commit/79bca2bf64da04e7e1e74a132eb54171f41638cc
 
+# The shared memory portion of this file was inspired by this Stack overflow answer: https://stackoverflow.com/a/66522825
+
 
 # YOLOv5 🚀 by Ultralytics, GPL-3.0 license
 """
