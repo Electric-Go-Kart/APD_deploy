@@ -7,6 +7,7 @@ git checkout 79bca2bf64da04e7e1e74a132eb54171f41638cc
 cd ..
 mv detect.py ./yolov5/
 mv 528Project/ ./yolov5/
+mv run_it.sh ./yolov5/
 cd yolov5
 mkdir runs
 
