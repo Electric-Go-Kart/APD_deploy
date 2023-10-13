@@ -32,6 +32,7 @@ import cv2
 import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
+from multiprocessing import Process, Value
 
 # import tflite_runtime.interpreter as tflite
 
@@ -326,6 +327,40 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
 
 
+source1 = "0"  # Primary camera
+source2 = "1"  # Secondary camera
+
+def detect_camera(source, count=None):
+    """
+    This function will handle the detection for a single camera.
+    Assume that it takes the camera source and a shared count (for demonstration purposes) as parameters.
+    """
+    # Your setup code (model loading, etc.)
+
+    cap = cv2.VideoCapture(source)
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Here, apply your detection logic on the frame...
+        # For demonstration, I'll just increment the detection count whenever a frame is processed.
+        if count:
+            with count.get_lock():
+                count.value += 1
+                
+def start_detection_processes():
+    detection_count = Value('i', 0)
+    p1 = Process(target=detect_camera, args=(source1, detection_count))
+    p2 = Process(target=detect_camera, args=(source2, detection_count))
+    p1.start()
+    p2.start()
+    # If you want the main process to wait for these processes, keep the join calls
+    # Else, you can comment them out to let the main process continue without waiting
+    p1.join()
+    p2.join()
+
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
@@ -366,4 +401,5 @@ def main(opt):
 
 if __name__ == "__main__":
     opt = parse_opt()
+    start_detection_processes()
     main(opt)
