@@ -328,7 +328,7 @@ def detect_camera(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
 
 source1 = "0"  # Primary camera
-source2 = "2"  # Secondary camera
+source2 = "1"  # Secondary camera
 
 
 """
@@ -340,6 +340,7 @@ source2 = "2"  # Secondary camera
 
                 
 def start_detection_processes():
+    print("Start")
     detection_count = Value('i', 0)
     p1 = Process(target=detect_camera, args=(source1, detection_count))
     p2 = Process(target=detect_camera, args=(source2, detection_count))
@@ -349,6 +350,7 @@ def start_detection_processes():
     # Else, you can comment them out to let the main process continue without waiting
     p1.join()
     p2.join()
+    print("Finish")
 
 def parse_opt():
     parser = argparse.ArgumentParser()
@@ -389,6 +391,8 @@ def main(opt):
 
 
 if __name__ == "__main__":
-    opt = parse_opt()
-    start_detection_processes()
-    main(opt)
+    cameras = [0, 2]  # Assuming camera IDs or some identifiers
+    for camera in cameras:
+        opt = parse_opt(camera)  # Assuming parse_opt can take a camera ID to adjust options
+        start_detection_processes()
+        main(opt)
