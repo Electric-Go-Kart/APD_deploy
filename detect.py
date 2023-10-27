@@ -211,7 +211,7 @@ def detect_camera(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                 net.setInput(img)
                 pred = torch.tensor(net.forward())
             else:
-                pred = torch.tensor(session.run([session.get_outputs()[0].name], {session.get_inputs()[0].name: img}))
+                pred = torch.tensor(session.detect_camera([session.get_outputs()[0].name], {session.get_inputs()[0].name: img}))
         else:  # tensorflow model (tflite, pb, saved_model)
             imn = img.permute(0, 2, 3, 1).cpu().numpy()  # image in numpy
             if pb:
