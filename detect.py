@@ -339,19 +339,34 @@ source2 = "2"  # Secondary camera
 
 
                 
-def start_detection_processes():
+def start_detection_processes(opt):
     print("Start")
     detection_count1 = Value('i', 0)
     detection_count2 = Value('i', 0)
-    p1 = Process(target=detect_camera, args=(source1, detection_count1))
-    p2 = Process(target=detect_camera, args=(source2, detection_count2))
+    
+    # Create processes that run the detect_camera function for each source
+    p1 = Process(target=detect_camera, args=(source1, opt.weights, opt.imgsz, opt.conf_thres, opt.iou_thres,
+                                             opt.max_det, opt.device, opt.view_img, opt.save_txt, opt.save_conf,
+                                             opt.save_crop, opt.nosave, opt.classes, opt.agnostic_nms, opt.augment,
+                                             opt.visualize, opt.update, opt.project, opt.name, opt.exist_ok,
+                                             opt.line_thickness, opt.hide_labels, opt.hide_conf, opt.half, opt.dnn))
+    
+    p2 = Process(target=detect_camera, args=(source2, opt.weights, opt.imgsz, opt.conf_thres, opt.iou_thres,
+                                             opt.max_det, opt.device, opt.view_img, opt.save_txt, opt.save_conf,
+                                             opt.save_crop, opt.nosave, opt.classes, opt.agnostic_nms, opt.augment,
+                                             opt.visualize, opt.update, opt.project, opt.name, opt.exist_ok,
+                                             opt.line_thickness, opt.hide_labels, opt.hide_conf, opt.half, opt.dnn))
+    
+    # Start the processes
     p1.start()
     p2.start()
-    # If you want the main process to wait for these processes, keep the join calls
-    # Else, you can comment them out to let the main process continue without waiting
+    
+    # Wait for both processes to finish
     p1.join()
     p2.join()
+    
     print("Finish")
+
 
 def parse_opt():
     parser = argparse.ArgumentParser()
@@ -393,5 +408,6 @@ def main(opt):
 
 if __name__ == "__main__":
         opt = parse_opt()  # Assuming parse_opt can take a camera ID to adjust options
-        start_detection_processes()
+        start_detection_processes(opt)
+ 
         
