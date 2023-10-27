@@ -33,6 +33,7 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 
+import threading
 # import tflite_runtime.interpreter as tflite
 
 FILE = Path(__file__).resolve()
@@ -373,16 +374,19 @@ def list_connected_cameras():
 
     return connected_cameras
 
-def main(opt):
-    # check_requirements(exclude=('tensorboard', 'thop'))
-    run(**vars(opt))
-
+def user_input_thread():
+    while True:
+        input_source = int(input("Enter the camera source (0 or 1): "))
+        opt.source = input_source
 
 if __name__ == "__main__":
     opt = parse_opt()
+    
+    # Create a thread for user input
+    user_input_thread = threading.Thread(target=user_input_thread)
+    user_input_thread.daemon = True
+    user_input_thread.start()
 
-    # Test code to see if changing camera values works
+    # Main thread continues running the inference
     while True:
-        test_val = input(f"Enter a value to change the camera to... Connected Cameras Are {list_connected_cameras()}: ")
-        opt.source = int(test_val)
-        main(opt)
+        run(**vars(opt))
