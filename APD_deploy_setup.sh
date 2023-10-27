@@ -3,8 +3,13 @@
 # Setup APD_deploy folder
 git clone https://github.com/ultralytics/yolov5
 cd yolov5
-#git checkout 79bca2bf64da04e7e1e74a132eb54171f41638cc
+git checkout remotes/origin/Test
 cd ..
+mv detect.py ./yolov5/
+mv 528Project/ ./yolov5/
+mv run_it.sh ./yolov5/
+cd yolov5
+mkdir runs
 
 # Setup Coral dependencies
 echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | sudo tee /etc/apt/sources.list.d/coral-edgetpu.list
