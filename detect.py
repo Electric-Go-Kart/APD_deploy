@@ -358,6 +358,20 @@ def parse_opt():
     print_args(FILE.stem, opt)
     return opt
 
+def list_connected_cameras():
+    # List of camera indexes to check (common values are 0, 1, 2, etc.)
+    camera_indexes = list(range(10))  # You can adjust the range as needed
+
+    connected_cameras = []
+
+    for index in camera_indexes:
+        cap = cv2.VideoCapture(index)
+        if cap.isOpened():
+            _, _ = cap.read()  # Read a frame to ensure the camera is working
+            connected_cameras.append(f"Camera {index}")
+            cap.release()
+
+    return connected_cameras
 
 def main(opt):
     # check_requirements(exclude=('tensorboard', 'thop'))
@@ -366,4 +380,9 @@ def main(opt):
 
 if __name__ == "__main__":
     opt = parse_opt()
-    main(opt)
+
+    # Test code to see if changing camera values works
+    while True:
+        test_val = input(f"Enter a value to change the camera to... Connected Cameras Are {list_connected_cameras()}: ")
+        opt.source = int(test_val)
+        main(opt)
