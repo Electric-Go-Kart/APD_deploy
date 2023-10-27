@@ -55,7 +55,7 @@ import time
 
 
 @torch.no_grad()
-def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
+def detect_camera(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
         imgsz=640,  # inference size (pixels)
         conf_thres=0.25,  # confidence threshold
@@ -328,27 +328,16 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
 
 source1 = "0"  # Primary camera
-source2 = "1"  # Secondary camera
+source2 = "2"  # Secondary camera
 
-def detect_camera(source, count=None):
-    """
+
+"""
     This function will handle the detection for a single camera.
     Assume that it takes the camera source and a shared count (for demonstration purposes) as parameters.
     """
     # Your setup code (model loading, etc.)
 
-    cap = cv2.VideoCapture(source)
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        # Here, apply your detection logic on the frame...
-        # For demonstration, I'll just increment the detection count whenever a frame is processed.
-        if count:
-            with count.get_lock():
-                count.value += 1
                 
 def start_detection_processes():
     detection_count = Value('i', 0)
