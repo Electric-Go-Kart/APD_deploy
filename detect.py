@@ -386,7 +386,6 @@ if __name__ == "__main__":
     user_input_thread = threading.Thread(target=user_input_thread)
     user_input_thread.daemon = True
     user_input_thread.start()
-    #
     # Main thread continues running the inference
     while True:
         run(**vars(opt))
