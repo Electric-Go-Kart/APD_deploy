@@ -382,7 +382,7 @@ def user_input_thread():
 if __name__ == "__main__":
     opt = parse_opt()
     
-    # Create a thread for user input
+    # Create a thread for user input while the main thread runs the inference
     user_input_thread = threading.Thread(target=user_input_thread)
     user_input_thread.daemon = True
     user_input_thread.start()
