@@ -33,8 +33,9 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 
-import threading
-# import tflite_runtime.interpreter as tflite
+import multiprocessing
+import subprocess
+#import tflite_runtime.interpreter as tflite
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -286,8 +287,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
             # Print time (inference-only)
             LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
-
-            # Stream results
+            
             im0 = annotator.result()
             if view_img:
                 # Original code to display in cv2 window
@@ -330,6 +330,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
+    # remove source argument because it is not needed ??
     parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
@@ -359,33 +360,35 @@ def parse_opt():
     print_args(FILE.stem, opt)
     return opt
 
-def list_connected_cameras():
-    # List of camera indexes to check (common values are 0, 1, 2, etc.)
-    camera_indexes = list(range(10))  # You can adjust the range as needed
-
+def list_connected_cameras(num_cameras=2):
+    '''List the connected cameras on the device, 
+    and return the source indicies in a list '''
+    camera_indexes = list(range(num_cameras))  # adjust the range as needed
     connected_cameras = []
-
+    connected_indexes = []
     for index in camera_indexes:
         cap = cv2.VideoCapture(index)
         if cap.isOpened():
             _, _ = cap.read()  # Read a frame to ensure the camera is working
-            connected_cameras.append(f"Camera {index}")
+            connected_cameras.append(f"Camera {index}") # for printability
+            connected_indexes.append(index) # for setting the source
             cap.release()
+    return connected_cameras, connected_indexes
 
-    return connected_cameras
-
-def user_input_thread():
-    while True:
-        input_source = int(input("Enter the camera source (0 or 1): "))
-        opt.source = input_source
+def process_camera(camera_index):
+    '''Process a single camera'''
+    opt.source = camera_index
+    run(**vars(opt))
 
 if __name__ == "__main__":
     opt = parse_opt()
+    camera_list, camera_indexes = list_connected_cameras(num_cameras=4)
+    process = []
+    for index in camera_indexes:
+        # Start a subprocess for each camera
+        p = multiprocessing.Process(target=process_camera, args=(index,))
+        process.append(p)
+        p.start()
     
-    # Create a thread for user input while the main thread runs the inference
-    user_input_thread = threading.Thread(target=user_input_thread)
-    user_input_thread.daemon = True
-    user_input_thread.start()
-    # Main thread continues running the inference
-    while True:
-        run(**vars(opt))
+    for p in process:
+        p.join()
