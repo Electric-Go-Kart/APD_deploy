@@ -375,6 +375,26 @@ def list_connected_cameras(num_cameras=2):
             cap.release()
     return connected_cameras, connected_indexes
 
+def list_coral_tpu_devices():
+    try:
+        # Run the 'lsusb' command to list USB devices
+        result = subprocess.run(['lsusb'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if result.returncode == 0:
+            # Split the output by lines and search for Coral devices
+            output_lines = result.stdout.split('\n')
+            coral_devices = [line for line in output_lines if '1a6e' in line.lower()]  # Coral USB Vendor ID
+            if len(coral_devices) == 0:
+                print("No Coral Edge TPU devices found.")
+            else:
+                print(f"Number of Coral Edge TPU devices: {len(coral_devices)}")
+                for i, device in enumerate(coral_devices, 1):
+                    print(f"Device {i}: {device}")
+
+        else:
+            print("Error running 'lsusb'. Make sure 'lsusb' is installed and the user has the necessary permissions.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
 def process_camera(camera_index):
     '''Process a single camera'''
     opt.source = camera_index
