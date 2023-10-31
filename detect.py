@@ -142,7 +142,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             if source == 0:
                 interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': 'usb:{}'.format(int(source))})])
             else:
-                interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': 'pci:{}'.format(int(source-1))})]) # source -1 to account for the webcam being 2nd in the list
+                interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': 'pci:{}'.format(int(source)-1)})]) # source -1 to account for the webcam being 2nd in the list
             # Commented out for test deployment on coral usb
             # if "edgetpu" in w:  # https://www.tensorflow.org/lite/guide/python#install_tensorflow_lite_for_python
                 # import tflite_runtime.interpreter as tflri
