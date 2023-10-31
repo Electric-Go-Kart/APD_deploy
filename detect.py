@@ -138,7 +138,11 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             
             # Added in for test deployment on coral usb
             import tflite_runtime.interpreter as tflite
-            interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': 'usb:{}'.format(process.current_process().name)})])
+            # get the name from the pid (0 is the name of the index... p = multiprocessing.Process(target=process_camera, args=(index,), name=index)) for the TPU device
+            if source == 0:
+                interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': 'usb:{}'.format(source)})])
+            else:
+                interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': 'pci:{}'.format(source-1)})]) # source -1 to account for the webcam being 2nd in the list
             # Commented out for test deployment on coral usb
             # if "edgetpu" in w:  # https://www.tensorflow.org/lite/guide/python#install_tensorflow_lite_for_python
                 # import tflite_runtime.interpreter as tflri
@@ -405,7 +409,7 @@ if __name__ == "__main__":
     process = []
     for index in camera_indexes:
         # Start a subprocess for each camera
-        p = multiprocessing.Process(target=process_camera, args=(index,), name=index)
+        p = multiprocessing.Process(target=process_camera, args=(index,))
         process.append(p)
         p.start()
     
