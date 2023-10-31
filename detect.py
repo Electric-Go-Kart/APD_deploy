@@ -138,7 +138,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             
             # Added in for test deployment on coral usb
             import tflite_runtime.interpreter as tflite
-            interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': 'usb:{}'.format(process.name)})])
+            interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': 'usb:{}'.format(process.current_process().name)})])
             # Commented out for test deployment on coral usb
             # if "edgetpu" in w:  # https://www.tensorflow.org/lite/guide/python#install_tensorflow_lite_for_python
                 # import tflite_runtime.interpreter as tflri
