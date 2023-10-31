@@ -382,7 +382,7 @@ def list_coral_tpu_devices():
         if result.returncode == 0:
             # Split the output by lines and search for Coral devices
             output_lines = result.stdout.split('\n')
-            coral_devices = [line for line in output_lines if '1a6e' in line.lower()]  # Coral USB Vendor ID
+            coral_devices = [line for line in output_lines if '18d1' in line.lower()]  # Coral USB Vendor ID
             if len(coral_devices) == 0:
                 print("No Coral Edge TPU devices found.")
             else:
