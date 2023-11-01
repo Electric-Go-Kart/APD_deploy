@@ -331,7 +331,8 @@ def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
     # remove source argument because it is not needed ??
-    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--sources', nargs='+', type=int, help='source webcam indices e.g. 0 1')
+    parser.add_argument('--coral_devices', nargs='+', type=str, help='coral device strings e.g. usb:0 usb:1')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
@@ -384,28 +385,26 @@ def list_coral_tpu_devices():
 
 def process_camera_with_tpu(camera_index, coral_device):
     opt.source = camera_index
-    # Here you would set the specific Coral TPU for this process. This is just a placeholder.
-    # You will need to modify your inference code to accept and use a specific TPU.
     opt.coral_device = coral_device
-    run(**vars(opt))
+    # run(**vars(opt))  # this is the place where you would call your detection routine
 
 if __name__ == "__main__":
     opt = parse_opt()
-    
+
     # List connected cameras
     _, camera_indexes = list_connected_cameras(num_cameras=2)
-    
+
     # List Coral TPUs
     coral_devices = list_coral_tpu_devices()
     if len(coral_devices) < 2:
         print("Please ensure two Coral TPUs are connected.")
         exit(1)
-    
+
     processes = []
-    for cam_idx, coral_device in zip(camera_indexes, coral_devices[:2]):  # Only take the first 2 TPUs
-        p = multiprocessing.Process(target=process_camera_with_tpu, args=(cam_idx, coral_device))
-        processes.append(p)
+    for s, c in zip(opt.sources, opt.coral_devices):
+        p = multiprocessing.Process(target=process_camera_with_tpu, args=(s, c))
         p.start()
-    
+        processes.append(p)
+
     for p in processes:
         p.join()
