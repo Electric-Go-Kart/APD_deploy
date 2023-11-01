@@ -60,7 +60,7 @@ import time
 
 @torch.no_grad()
 def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
-        source=2 / 'data/images',  # file/dir/URL/glob, 0 for webcam
+        source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
         imgsz=640,  # inference size (pixels)
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
@@ -180,12 +180,12 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     frame_dtype = np.dtype(np.uint8)
 
     #create a shared memory for sending the frame shape
-    frame_shape_shm = SharedMemory(name="frame_shape", create=True, size=frame_ndim*4) #4 bytes per dim as long as int32 is big enough
+    frame_shape_shm = SharedMemory(name="frame_shape1", create=True, size=frame_ndim*4) #4 bytes per dim as long as int32 is big enough
     frame_shape = np.ndarray(3, buffer=frame_shape_shm.buf, dtype='i4')  #4 bytes per dim as long as int32 is big enough
     frame_shape[:] = frame_shape_tup
 
     #create the shared memory for the frame buffer
-    frame_buffer_shm = SharedMemory(name="frame_buffer", create=True, size=frame_nbytes)
+    frame_buffer_shm = SharedMemory(name="frame_buffer1", create=True, size=frame_nbytes)
     frame_buffer = np.ndarray(frame_shape, buffer=frame_buffer_shm.buf, dtype=frame_dtype)
     
 
