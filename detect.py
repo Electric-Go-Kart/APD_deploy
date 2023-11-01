@@ -1,27 +1,3 @@
-# !!!NOTE!!!: This file was originally developed by Ultralytics, and we 
-# have simply modified it to suit our deployment. The mass majority of
-# credit for this file goes to Ultralytics.
-# Ultralytics Github: https://github.com/ultralytics
-# yolov5 repo: https://github.com/ultralytics/yolov5
-# Specific commit we started off from: https://github.com/ultralytics/yolov5/commit/79bca2bf64da04e7e1e74a132eb54171f41638cc
-
-# The shared memory portion of this file was inspired by this Stack overflow answer: https://stackoverflow.com/a/66522825
-
-
-# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
-"""
-Run inference on images, videos, directories, streams, etc.
-
-Usage:
-    $ python path/to/detect.py --weights yolov5s.pt --source 0  # webcam
-                                                             img.jpg  # image
-                                                             vid.mp4  # video
-                                                             path/  # directory
-                                                             path/*.jpg  # glob
-                                                             'https://youtu.be/Zgi9g1ksQHc'  # YouTube
-                                                             'rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP stream
-"""
-
 import argparse
 import os
 import platform
@@ -33,9 +9,7 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 
-import multiprocessing
-import subprocess
-#import tflite_runtime.interpreter as tflite
+# import tflite_runtime.interpreter as tflite
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -138,8 +112,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             
             # Added in for test deployment on coral usb
             import tflite_runtime.interpreter as tflite
-            # get the name from the pid (0 is the name of the index... p = multiprocessing.Process(target=process_camera, args=(index,), name=index)) for the TPU device
-            interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': opt.coral_device})])
+            interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1')])
+            
             # Commented out for test deployment on coral usb
             # if "edgetpu" in w:  # https://www.tensorflow.org/lite/guide/python#install_tensorflow_lite_for_python
                 # import tflite_runtime.interpreter as tflri
@@ -287,7 +261,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 
             # Print time (inference-only)
             LOGGER.info(f'{s}Done. ({t3 - t2:.3f}s)')
-            
+
+            # Stream results
             im0 = annotator.result()
             if view_img:
                 # Original code to display in cv2 window
@@ -330,9 +305,8 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
-    # remove source argument because it is not needed ??
-    parser.add_argument('--sources', nargs='+', type=int, help='source webcam indices e.g. 0 1')
-    parser.add_argument('--coral_devices', nargs='+', type=str, help='coral device strings e.g. usb:0 usb:1')
+    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--coral-device', type=str, default='', help='Coral device ID')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
@@ -361,50 +335,12 @@ def parse_opt():
     print_args(FILE.stem, opt)
     return opt
 
-def list_connected_cameras(num_cameras=2):
-    camera_indexes = list(range(num_cameras))
-    connected_cameras = []
-    connected_indexes = []
-    for index in camera_indexes:
-        cap = cv2.VideoCapture(index)
-        if cap.isOpened():
-            _, _ = cap.read()
-            connected_cameras.append(f"Camera {index}")
-            connected_indexes.append(index)
-            cap.release()
-    return connected_cameras, connected_indexes
 
-def list_coral_tpu_devices():
-    try:
-        result = subprocess.run(['lsusb'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        output_lines = result.stdout.split('\n')
-        coral_devices = [line for line in output_lines if '18d1' in line.lower()]
-        return coral_devices
-    except Exception as e:
-        return []
+def main(opt):
+    # check_requirements(exclude=('tensorboard', 'thop'))
+    run(**vars(opt))
 
-def process_camera_with_tpu(camera_index, coral_device):
-    opt.source = camera_index
-    opt.coral_device = coral_device
-    # run(**vars(opt))  # this is the place where you would call your detection routine
 
 if __name__ == "__main__":
     opt = parse_opt()
-
-    # List connected cameras
-    _, camera_indexes = list_connected_cameras(num_cameras=2)
-
-    # List Coral TPUs
-    coral_devices = list_coral_tpu_devices()
-    if len(coral_devices) < 2:
-        print("Please ensure two Coral TPUs are connected.")
-        exit(1)
-
-    processes = []
-    for s, c in zip(opt.sources, opt.coral_devices):
-        p = multiprocessing.Process(target=process_camera_with_tpu, args=(s, c))
-        p.start()
-        processes.append(p)
-
-    for p in processes:
-        p.join()
+    main(opt)
