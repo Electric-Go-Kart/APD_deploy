@@ -112,8 +112,10 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             
             # Added in for test deployment on coral usb
             import tflite_runtime.interpreter as tflite
-            interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1')])
-            
+            interpreter1 = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1'), device=':0'])
+
+            interpreter2 = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1'), device=':1'])
+
             # Commented out for test deployment on coral usb
             # if "edgetpu" in w:  # https://www.tensorflow.org/lite/guide/python#install_tensorflow_lite_for_python
                 # import tflite_runtime.interpreter as tflri
@@ -124,9 +126,9 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             # else:
                 # interpreter = tf.lite.Interpreter(model_path=w)  # load TFLite model
                 
-            interpreter.allocate_tensors()  # allocate
-            input_details = interpreter.get_input_details()  # inputs
-            output_details = interpreter.get_output_details()  # outputs
+            interpreter1.allocate_tensors()  # allocate
+            input_details = interpreter1.get_input_details()  # inputs
+            output_details = interpreter1.get_output_details()  # outputs
             int8 = input_details[0]['dtype'] == np.uint8  # is TFLite quantized uint8 model
             names = ['Car', 'Pedestrian', 'Cyclist', 'Van', 'Truck', 'Person_sitting', 'Tram', 'DontCare'] # setup class names :D
             
@@ -197,9 +199,9 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                 if int8:
                     scale, zero_point = input_details[0]['quantization']
                     imn = (imn / scale + zero_point).astype(np.uint8)  # de-scale
-                interpreter.set_tensor(input_details[0]['index'], imn)
-                interpreter.invoke()
-                pred = interpreter.get_tensor(output_details[0]['index'])
+                interpreter1.set_tensor(input_details[0]['index'], imn)
+                interpreter1.invoke()
+                pred = interpreter1.get_tensor(output_details[0]['index'])
                 if int8:
                     scale, zero_point = output_details[0]['quantization']
                     pred = (pred.astype(np.float32) - zero_point) * scale  # re-scale
@@ -306,7 +308,7 @@ def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
     parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
-    parser.add_argument('--coral-device', type=str, default='', help='Coral device ID')
+ #   parser.add_argument('--coral-device', type=str, default='', help='Coral device ID')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
