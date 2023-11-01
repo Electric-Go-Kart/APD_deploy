@@ -112,9 +112,9 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             
             # Added in for test deployment on coral usb
             import tflite_runtime.interpreter as tflite
-            interpreter1 = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1'), device=':0'])
+            interpreter1 = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={"device": ":0"})])
 
-            interpreter2 = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1'), device=':1'])
+            interpreter2 = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={"device": ":1"})])
 
             # Commented out for test deployment on coral usb
             # if "edgetpu" in w:  # https://www.tensorflow.org/lite/guide/python#install_tensorflow_lite_for_python
@@ -131,8 +131,13 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             output_details = interpreter1.get_output_details()  # outputs
             int8 = input_details[0]['dtype'] == np.uint8  # is TFLite quantized uint8 model
             names = ['Car', 'Pedestrian', 'Cyclist', 'Van', 'Truck', 'Person_sitting', 'Tram', 'DontCare'] # setup class names :D
-            
+            interpreter2.allocate_tensors()  # allocate
+            input_details = interpreter2.get_input_details()  # inputs
+            output_details = interpreter2.get_output_details()  # outputs
+            int8 = input_details[0]['dtype'] == np.uint8  # is TFLite quantized uint8 model
+            names = ['Car', 'Pedestrian', 'Cyclist', 'Van', 'Truck', 'Person_sitting', 'Tram', 'DontCare'] # setup class names :D
     imgsz = check_img_size(imgsz, s=stride)  # check image size
+    
 
     # Dataloader
     if webcam:
@@ -199,17 +204,32 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
                 if int8:
                     scale, zero_point = input_details[0]['quantization']
                     imn = (imn / scale + zero_point).astype(np.uint8)  # de-scale
+                    
                 interpreter1.set_tensor(input_details[0]['index'], imn)
                 interpreter1.invoke()
-                pred = interpreter1.get_tensor(output_details[0]['index'])
+                pred1 = interpreter1.get_tensor(output_details[0]['index'])
+
+                interpreter2.set_tensor(input_details[0]['index'], imn)
+                interpreter2.invoke()
+                pred2 = interpreter2.get_tensor(output_details[0]['index'])
+
                 if int8:
                     scale, zero_point = output_details[0]['quantization']
-                    pred = (pred.astype(np.float32) - zero_point) * scale  # re-scale
-            pred[..., 0] *= imgsz[1]  # x
-            pred[..., 1] *= imgsz[0]  # y
-            pred[..., 2] *= imgsz[1]  # w
-            pred[..., 3] *= imgsz[0]  # h
-            pred = torch.tensor(pred)
+                    scale, zero_point = output_details[0]['quantization']
+                    pred1 = (pred1.astype(np.float32) - zero_point) * scale  # re-scale
+                    pred2 = (pred2.astype(np.float32) - zero_point) * scale  # re-scale
+                
+            pred1[..., 0] *= imgsz[1]  # x
+            pred1[..., 1] *= imgsz[0]  # y
+            pred1[..., 2] *= imgsz[1]  # w
+            pred1[..., 3] *= imgsz[0]  # h
+            pred1 = torch.tensor(pred1)
+
+            pred2[..., 0] *= imgsz[1]  # x
+            pred2[..., 1] *= imgsz[0]  # y
+            pred2[..., 2] *= imgsz[1]  # w
+            pred2[..., 3] *= imgsz[0]  # h
+            pred2 = torch.tensor(pred2)
         t3 = time_sync()
         dt[1] += t3 - t2
 
@@ -303,11 +323,38 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
 
+def run_inference(frame, interpreter):
+    """
+    Run inference on a single frame using the given interpreter.
+    
+    Args:
+        frame (np.ndarray): The input image frame.
+        interpreter (tflite.Interpreter): The TensorFlow Lite interpreter.
+        
+    Returns:
+        np.ndarray: The inference output (predictions).
+    """
+    # Convert frame to desired format if necessary, e.g. RGB to BGR, resizing, normalization, etc.
+    # For now, I'll assume the frame is already in the desired format.
+    
+    # Set the tensor (input)
+    input_details = interpreter.get_input_details()
+    interpreter.set_tensor(input_details[0]['index'], frame)
+    
+    # Invoke the interpreter
+    interpreter.invoke()
+    
+    # Get the output tensor (predictions)
+    output_details = interpreter.get_output_details()
+    predictions = interpreter.get_tensor(output_details[0]['index'])
+    
+    return predictions
+
 
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
-    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0,1 for multiple webcam')
  #   parser.add_argument('--coral-device', type=str, default='', help='Coral device ID')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
@@ -341,6 +388,35 @@ def parse_opt():
 def main(opt):
     # check_requirements(exclude=('tensorboard', 'thop'))
     run(**vars(opt))
+    cam_sources = opt.source.split(",") if isinstance(opt.source, str) else opt.source
+
+    # Initialize two capture streams
+    cap1 = cv2.VideoCapture(int(cam_sources[0]))
+    cap2 = cv2.VideoCapture(int(cam_sources[2]))
+
+    while True:
+        ret1, frame1 = cap1.read()
+        ret2, frame2 = cap2.read()
+
+        # Check if frames are available
+     #   if not ret1 or not ret2:
+      #      break
+
+        # Preprocess frame1 and frame2 if necessary
+
+        # Run inference using interpreter1 and interpreter2
+        pred1 = run_inference(frame1, interpreter1)
+        pred2 = run_inference(frame2, interpreter2)
+
+        # Process predictions
+      #  process_predictions(pred1, frame1, save_dir1, etc.)  # save_dir1 is a directory for cam1 results
+       # process_predictions(pred2, frame2, save_dir2, etc.)  # save_dir2 is a directory for cam2 results
+
+        # Display or save results (handle separately for both frames)
+
+    cap1.release()
+    cap2.release()
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
