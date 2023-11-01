@@ -139,10 +139,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             # Added in for test deployment on coral usb
             import tflite_runtime.interpreter as tflite
             # get the name from the pid (0 is the name of the index... p = multiprocessing.Process(target=process_camera, args=(index,), name=index)) for the TPU device
-            if source == 0:
-                interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': ':{}'.format(int(source))})])
-            else:
-                interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': ':{}'.format(int(source)-1)})]) # source -1 to account for the webcam being 2nd in the list
+            interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': opt.coral_device})])
             # Commented out for test deployment on coral usb
             # if "edgetpu" in w:  # https://www.tensorflow.org/lite/guide/python#install_tensorflow_lite_for_python
                 # import tflite_runtime.interpreter as tflri
@@ -364,54 +361,51 @@ def parse_opt():
     return opt
 
 def list_connected_cameras(num_cameras=2):
-    '''List the connected cameras on the device, 
-    and return the source indicies in a list '''
-    camera_indexes = list(range(num_cameras))  # adjust the range as needed
+    camera_indexes = list(range(num_cameras))
     connected_cameras = []
     connected_indexes = []
     for index in camera_indexes:
         cap = cv2.VideoCapture(index)
         if cap.isOpened():
-            _, _ = cap.read()  # Read a frame to ensure the camera is working
-            connected_cameras.append(f"Camera {index}") # for printability
-            connected_indexes.append(index) # for setting the source
+            _, _ = cap.read()
+            connected_cameras.append(f"Camera {index}")
+            connected_indexes.append(index)
             cap.release()
     return connected_cameras, connected_indexes
 
 def list_coral_tpu_devices():
     try:
-        # Run the 'lsusb' command to list USB devices
         result = subprocess.run(['lsusb'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if result.returncode == 0:
-            # Split the output by lines and search for Coral devices
-            output_lines = result.stdout.split('\n')
-            coral_devices = [line for line in output_lines if '18d1' in line.lower()]  # Coral USB Vendor ID
-            if len(coral_devices) == 0:
-                print("No Coral Edge TPU devices found.")
-            else:
-                print(f"Number of Coral Edge TPU devices: {len(coral_devices)}")
-                for i, device in enumerate(coral_devices, 1):
-                    print(f"Device {i}: {device}")
-
-        else:
-            print("Error running 'lsusb'. Make sure 'lsusb' is installed and the user has the necessary permissions.")
+        output_lines = result.stdout.split('\n')
+        coral_devices = [line for line in output_lines if '18d1' in line.lower()]
+        return coral_devices
     except Exception as e:
-        print(f"An error occurred: {e}")
+        return []
 
-def process_camera(camera_index):
-    '''Process a single camera'''
+def process_camera_with_tpu(camera_index, coral_device):
     opt.source = camera_index
+    # Here you would set the specific Coral TPU for this process. This is just a placeholder.
+    # You will need to modify your inference code to accept and use a specific TPU.
+    opt.coral_device = coral_device
     run(**vars(opt))
 
 if __name__ == "__main__":
     opt = parse_opt()
-    camera_list, camera_indexes = list_connected_cameras(num_cameras=4)
-    process = []
-    for index in camera_indexes:
-        # Start a subprocess for each camera
-        p = multiprocessing.Process(target=process_camera, args=(index,))
-        process.append(p)
+    
+    # List connected cameras
+    _, camera_indexes = list_connected_cameras(num_cameras=2)
+    
+    # List Coral TPUs
+    coral_devices = list_coral_tpu_devices()
+    if len(coral_devices) < 2:
+        print("Please ensure two Coral TPUs are connected.")
+        exit(1)
+    
+    processes = []
+    for cam_idx, coral_device in zip(camera_indexes, coral_devices[:2]):  # Only take the first 2 TPUs
+        p = multiprocessing.Process(target=process_camera_with_tpu, args=(cam_idx, coral_device))
+        processes.append(p)
         p.start()
     
-    for p in process:
+    for p in processes:
         p.join()
