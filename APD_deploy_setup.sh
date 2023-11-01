@@ -3,7 +3,7 @@
 # Setup APD_deploy folder
 git clone https://github.com/ultralytics/yolov5
 cd yolov5
-git checkout 79bca2bf64da04e7e1e74a132eb54171f41638cc
+git checkout remotes/origin/Test1
 cd ..
 mv detect.py ./yolov5/
 mv 528Project/ ./yolov5/
