@@ -419,5 +419,5 @@ if __name__ == "__main__":
         process.start()
     
     # Wait for all processes to finish
-    for process in process:
+    for process in processes:
         process.join()
