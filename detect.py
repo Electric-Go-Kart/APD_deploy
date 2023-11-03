@@ -399,6 +399,7 @@ def parse_opt():
 
 if __name__ == "__main__":
     opt = parse_opt()
+    print(opt.sources)
     num_cams = len(opt.sources)
     num_tpus = len(opt.device_ids)
     if num_tpus != num_cams:
