@@ -81,7 +81,10 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         hide_conf=False,  # hide confidences
         half=False,  # use FP16 half-precision inference
         dnn=False,  # use OpenCV DNN for ONNX inference
+        device_id=0, # device ids for coral usb
+        shared_memory_name='frame_buffer_0', # shared memory names for each camera
         ):
+    
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
@@ -138,11 +141,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
             
             # Added in for test deployment on coral usb
             import tflite_runtime.interpreter as tflite
-            # get the name from the pid (0 is the name of the index... p = multiprocessing.Process(target=process_camera, args=(index,), name=index)) for the TPU device
-            if source == 0:
-                interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': ':{}'.format(int(source))})])
-            else:
-                interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', options={'device': ':{}'.format(int(source)-1)})]) # source -1 to account for the webcam being 2nd in the list
+            interpreter = tflite.Interpreter(model_path=w, experimental_delegates=[tflite.load_delegate('libedgetpu.so.1', {'device': f':{device_id}'})])
             # Commented out for test deployment on coral usb
             # if "edgetpu" in w:  # https://www.tensorflow.org/lite/guide/python#install_tensorflow_lite_for_python
                 # import tflite_runtime.interpreter as tflri
@@ -172,7 +171,6 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         bs = 1  # batch_size
     vid_path, vid_writer = [None] * bs, [None] * bs
 
-
     # Setup Shared Memory
     frame_ndim = 3
     frame_nbytes = 480 * 640 * 3
@@ -180,14 +178,13 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     frame_dtype = np.dtype(np.uint8)
 
     #create a shared memory for sending the frame shape
-    frame_shape_shm = SharedMemory(name="frame_shape", create=True, size=frame_ndim*4) #4 bytes per dim as long as int32 is big enough
+    frame_shape_shm = SharedMemory(name=shared_memory_name, create=True, size=frame_ndim*4) #4 bytes per dim as long as int32 is big enough
     frame_shape = np.ndarray(3, buffer=frame_shape_shm.buf, dtype='i4')  #4 bytes per dim as long as int32 is big enough
     frame_shape[:] = frame_shape_tup
 
     #create the shared memory for the frame buffer
-    frame_buffer_shm = SharedMemory(name="frame_buffer", create=True, size=frame_nbytes)
+    frame_buffer_shm = SharedMemory(name=shared_memory_name, create=True, size=frame_nbytes)
     frame_buffer = np.ndarray(frame_shape, buffer=frame_buffer_shm.buf, dtype=frame_dtype)
-    
 
     # Run inference
     if pt and device.type != 'cpu':
@@ -333,8 +330,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
-    # remove source argument because it is not needed ??
-    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--sources', nargs='+', type=str, default=ROOT / 'data/images', help='source')  # file/dir/URL/glob, 0 for webcam. seperated by spaces
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
@@ -358,60 +354,70 @@ def parse_opt():
     parser.add_argument('--hide-conf', default=False, action='store_true', help='hide confidences')
     parser.add_argument('--half', action='store_true', help='use FP16 half-precision inference')
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
+    # new arguments for shared memory and coral usb
+    parser.add_argument('--device-ids', nargs='+', type=int, default=0, help='device ids for coral usb') # seperated by spaces
+    parser.add_argument('--shared-memory-names', nargs='+', type=str, default='frame_buffer_0', help='shared memory names for each camera (don\'t use unless needed)') # seperated by spaces
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(FILE.stem, opt)
     return opt
 
-def list_connected_cameras(num_cameras=2):
-    '''List the connected cameras on the device, 
-    and return the source indicies in a list '''
-    camera_indexes = list(range(num_cameras))  # adjust the range as needed
-    connected_cameras = []
-    connected_indexes = []
-    for index in camera_indexes:
-        cap = cv2.VideoCapture(index)
-        if cap.isOpened():
-            _, _ = cap.read()  # Read a frame to ensure the camera is working
-            connected_cameras.append(f"Camera {index}") # for printability
-            connected_indexes.append(index) # for setting the source
-            cap.release()
-    return connected_cameras, connected_indexes
+# def list_connected_cameras(num_cameras=2):
+#     '''List the connected cameras on the device, 
+#     and return the source indicies in a list '''
+#     camera_indexes = list(range(num_cameras))  # adjust the range as needed
+#     connected_cameras = []
+#     connected_indexes = []
+#     for index in camera_indexes:
+#         cap = cv2.VideoCapture(index)
+#         if cap.isOpened():
+#             _, _ = cap.read()  # Read a frame to ensure the camera is working
+#             connected_cameras.append(f"Camera {index}") # for printability
+#             connected_indexes.append(index) # for setting the source
+#             cap.release()
+#     return connected_cameras, connected_indexes
 
-def list_coral_tpu_devices():
-    try:
-        # Run the 'lsusb' command to list USB devices
-        result = subprocess.run(['lsusb'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        if result.returncode == 0:
-            # Split the output by lines and search for Coral devices
-            output_lines = result.stdout.split('\n')
-            coral_devices = [line for line in output_lines if '18d1' in line.lower()]  # Coral USB Vendor ID
-            if len(coral_devices) == 0:
-                print("No Coral Edge TPU devices found.")
-            else:
-                print(f"Number of Coral Edge TPU devices: {len(coral_devices)}")
-                for i, device in enumerate(coral_devices, 1):
-                    print(f"Device {i}: {device}")
+# def list_coral_tpu_devices():
+#     try:
+#         # Run the 'lsusb' command to list USB devices
+#         result = subprocess.run(['lsusb'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+#         if result.returncode == 0:
+#             # Split the output by lines and search for Coral devices
+#             output_lines = result.stdout.split('\n')
+#             coral_devices = [line for line in output_lines if '18d1' in line.lower()]  # Coral USB Vendor ID
+#             if len(coral_devices) == 0:
+#                 print("No Coral Edge TPU devices found.")
+#             else:
+#                 print(f"Number of Coral Edge TPU devices: {len(coral_devices)}")
+#                 for i, device in enumerate(coral_devices, 1):
+#                     print(f"Device {i}: {device}")
 
-        else:
-            print("Error running 'lsusb'. Make sure 'lsusb' is installed and the user has the necessary permissions.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-def process_camera(camera_index):
-    '''Process a single camera'''
-    opt.source = camera_index
-    run(**vars(opt))
+#         else:
+#             print("Error running 'lsusb'. Make sure 'lsusb' is installed and the user has the necessary permissions.")
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     opt = parse_opt()
-    camera_list, camera_indexes = list_connected_cameras(num_cameras=4)
-    process = []
-    for index in camera_indexes:
-        # Start a subprocess for each camera
-        p = multiprocessing.Process(target=process_camera, args=(index,))
-        process.append(p)
-        p.start()
+    num_cams = len(opt.sources)
+    num_tpus = len(opt.device_ids)
+    if num_tpus != num_cams:
+        print("Number of cameras and TPUs must be the same!! Read the docs here: ...")
+    # create unique shared memory for each camera and TPU
+    shared_memory_names = [f"frame_buffer_{i}" for i in range(num_tpus)] 
     
-    for p in process:
-        p.join()
+    processes = []
+
+    for i in range(num_tpus):
+        # Start a subprocess for each camera
+        process = multiprocessing.Process(target=run, args=(opt.weights, opt.sources[i], opt.imgsz, opt.conf_thres, opt.iou_thres, 
+                                                            opt.max_det, opt.device, opt.view_img, opt.save_txt, opt.save_conf, 
+                                                            opt.save_crop, opt.nosave, opt.classes, opt.agnostic_nms, opt.augment, 
+                                                            opt.visualize, opt.update, opt.project, opt.name, opt.exist_ok, opt.line_thickness, 
+                                                            opt.hide_labels, opt.hide_conf, opt.half, opt.dnn, opt.device_ids[i], shared_memory_names[i]))
+        processes.append(process)
+        process.start()
+    
+    # Wait for all processes to finish
+    for process in process:
+        process.join()
