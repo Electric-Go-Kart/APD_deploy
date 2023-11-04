@@ -416,6 +416,7 @@ if __name__ == "__main__":
                                                             opt.save_crop, opt.nosave, opt.classes, opt.agnostic_nms, opt.augment, 
                                                             opt.visualize, opt.update, opt.project, opt.name, opt.exist_ok, opt.line_thickness, 
                                                             opt.hide_labels, opt.hide_conf, opt.half, opt.dnn, opt.device_ids[i], shared_memory_names[i]))
+        print(f"Starting process for camera {i}")
         processes.append(process)
         process.start()
     
