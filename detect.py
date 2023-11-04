@@ -178,12 +178,12 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     frame_dtype = np.dtype(np.uint8)
 
     #create a shared memory for sending the frame shape
-    frame_shape_shm = SharedMemory(name=shared_memory_name, create=True, size=frame_ndim*4) #4 bytes per dim as long as int32 is big enough
+    frame_shape_shm = SharedMemory(name=f'{shared_memory_name}_shape', create=True, size=frame_ndim * 4)
     frame_shape = np.ndarray(3, buffer=frame_shape_shm.buf, dtype='i4')  #4 bytes per dim as long as int32 is big enough
     frame_shape[:] = frame_shape_tup
 
     #create the shared memory for the frame buffer
-    frame_buffer_shm = SharedMemory(name=shared_memory_name, create=True, size=frame_nbytes)
+    frame_buffer_shm = SharedMemory(name=f'{shared_memory_name}_buf', create=True, size=frame_nbytes)
     frame_buffer = np.ndarray(frame_shape, buffer=frame_buffer_shm.buf, dtype=frame_dtype)
 
     # Run inference
