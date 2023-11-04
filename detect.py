@@ -419,7 +419,9 @@ if __name__ == "__main__":
         print(f"Starting process for camera {i}")
         processes.append(process)
         process.start()
-    
-    # Wait for all processes to finish
-    for process in processes:
+        time.sleep(1)
         process.join()
+
+    # Wait for all processes to finish
+    # for process in processes:
+    #     process.join()
