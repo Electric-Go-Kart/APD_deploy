@@ -84,7 +84,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         device_id=0, # device ids for coral usb
         shared_memory_name='frame_buffer_0', # shared memory names for each camera
         ):
-    
+    print("Starting run")
     source = str(source)
     save_img = not nosave and not source.endswith('.txt')  # save inference images
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
