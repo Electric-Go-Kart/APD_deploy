@@ -82,7 +82,7 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
         half=False,  # use FP16 half-precision inference
         dnn=False,  # use OpenCV DNN for ONNX inference
         device_id=0, # device ids for coral usb
-        shared_memory_name='frame_buffer_0', # shared memory names for each camera
+       # shared_memory_name='frame_buffer_0', # shared memory names for each camera
         ):
     print("Starting run")
     source = str(source)
