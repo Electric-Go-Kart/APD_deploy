@@ -178,12 +178,12 @@ def run(weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
     frame_dtype = np.dtype(np.uint8)
 
     #create a shared memory for sending the frame shape
-    frame_shape_shm = SharedMemory(name=f'{shared_memory_name}_shape', create=True, size=frame_ndim * 4)
+    frame_shape_shm = SharedMemory(name=frame_shape, create=True, size=frame_ndim * 4)
     frame_shape = np.ndarray(3, buffer=frame_shape_shm.buf, dtype='i4')  #4 bytes per dim as long as int32 is big enough
     frame_shape[:] = frame_shape_tup
 
     #create the shared memory for the frame buffer
-    frame_buffer_shm = SharedMemory(name=f'{shared_memory_name}_buf', create=True, size=frame_nbytes)
+    frame_buffer_shm = SharedMemory(name=frame_buffer, create=True, size=frame_nbytes)
     frame_buffer = np.ndarray(frame_shape, buffer=frame_buffer_shm.buf, dtype=frame_dtype)
 
     # Run inference
@@ -356,7 +356,7 @@ def parse_opt():
     parser.add_argument('--dnn', action='store_true', help='use OpenCV DNN for ONNX inference')
     # new arguments for shared memory and coral usb
     parser.add_argument('--device-ids', nargs='+', type=int, default=0, help='device ids for coral usb') # seperated by spaces
-    parser.add_argument('--shared-memory-names', nargs='+', type=str, default='frame_buffer_0', help='shared memory names for each camera (don\'t use unless needed)') # seperated by spaces
+  #  parser.add_argument('--shared-memory-names', nargs='+', type=str, default='frame_buffer_0', help='shared memory names for each camera (don\'t use unless needed)') # seperated by spaces
     opt = parser.parse_args()
     opt.imgsz *= 2 if len(opt.imgsz) == 1 else 1  # expand
     print_args(FILE.stem, opt)
@@ -405,7 +405,7 @@ if __name__ == "__main__":
     if num_tpus != num_cams:
         print("Number of cameras and TPUs must be the same!! Read the docs here: ...")
     # create unique shared memory for each camera and TPU
-    shared_memory_names = [f"frame_buffer_{i}" for i in range(num_tpus)] 
+ #   shared_memory_names = [f"frame_buffer_{i}" for i in range(num_tpus)] 
     
     processes = []
 
@@ -415,7 +415,7 @@ if __name__ == "__main__":
                                                             opt.max_det, opt.device, opt.view_img, opt.save_txt, opt.save_conf, 
                                                             opt.save_crop, opt.nosave, opt.classes, opt.agnostic_nms, opt.augment, 
                                                             opt.visualize, opt.update, opt.project, opt.name, opt.exist_ok, opt.line_thickness, 
-                                                            opt.hide_labels, opt.hide_conf, opt.half, opt.dnn, opt.device_ids[i], shared_memory_names[i]))
+                                                            opt.hide_labels, opt.hide_conf, opt.half, opt.dnn, opt.device_ids[i]))
         print(f"Starting process for camera {i}")
         processes.append(process)
         process.start()
